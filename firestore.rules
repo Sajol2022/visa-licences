@@ -2,15 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function admin() { return signedIn() && request.auth.token.admin == true; }
-    match /users/{uid} { allow read: if signedIn() && request.auth.uid == uid || admin(); allow write: if signedIn() && request.auth.uid == uid || admin(); }
-    match /licenses/{id} { allow read: if signedIn() && resource.data.userId == request.auth.uid || admin(); allow write: if admin(); }
-    match /wallets/{id} { allow read: if signedIn() && id == request.auth.uid || admin(); allow write: if false; }
-    match /creditTransactions/{id} { allow read: if signedIn() && resource.data.userId == request.auth.uid || admin(); allow write: if false; }
-    match /payments/{id} { allow read: if signedIn() && resource.data.userId == request.auth.uid || admin(); allow write: if false; }
-    match /devices/{id} { allow read: if signedIn() && resource.data.userId == request.auth.uid || admin(); allow write: if false; }
+    function admin() {
+      return signedIn() && (request.auth.token.admin == true || request.auth.token.email == 'sajolsarker5789@gmail.com');
+    }
+    match /users/{uid} {
+      allow read: if admin() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if admin() || (signedIn() && request.auth.uid == uid && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status);
+      allow delete: if admin();
+    }
+    match /licenses/{id} { allow read: if admin() || (signedIn() && resource.data.userId == request.auth.uid); allow write: if admin(); }
+    match /wallets/{id} { allow read: if admin() || (signedIn() && id == request.auth.uid); allow write: if false; }
+    match /creditTransactions/{id} { allow read: if admin() || (signedIn() && resource.data.userId == request.auth.uid); allow write: if false; }
+    match /payments/{id} { allow read: if admin() || (signedIn() && resource.data.userId == request.auth.uid); allow write: if false; }
+    match /devices/{id} { allow read: if admin() || (signedIn() && resource.data.userId == request.auth.uid); allow write: if false; }
+    match /activationTokens/{id} { allow read, write: if false; }
     match /auditLogs/{id} { allow read: if admin(); allow write: if false; }
     match /settings/{id} { allow read: if signedIn(); allow write: if admin(); }
-    match /creditPackages/{id} { allow read: if true; allow write: if admin(); }
+    match /creditPackages/{id} { allow read: if signedIn(); allow write: if admin(); }
+    match /{document=**} { allow read, write: if false; }
   }
 }

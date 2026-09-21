@@ -1,23 +1,55 @@
-# Visa Autofill Pro — License & Credit Portal
+# Visa Autofill Pro — Commercial Portal
 
-This project contains a Next.js customer/admin portal and Firebase Cloud Functions API for the Visa Autofill Pro Chrome extension.
+Production-oriented customer/admin portal for a credit-based browser extension.
 
-## Important
-- This is the commercial management layer; it does not replace the extension's existing PDF/OCR/autofill features.
-- Set `API_BASE_URL` in the extension's `config.js` to the deployed Firebase Function URL.
-- Configure Firebase Authentication and Firestore before production use.
-- Create an initial admin by setting a Firebase custom claim (`admin: true`) using a secure server-side script. Never expose Admin SDK credentials to the browser.
-- Payment provider integration is intentionally provider-neutral. Add a verified server-side webhook that creates a `payments` record and then atomically increments the license's credits.
+## Current flow
 
-## Deploy
-1. Copy `.env.example` to `.env.local` and fill Firebase web config.
-2. `npm install && npm run build`.
-3. Deploy the Next.js app to Vercel and add the same environment variables in Vercel.
-4. In `functions`, install dependencies and run `npm run build`, then `firebase deploy --only functions`.
-5. Put the resulting function URL into the extension `config.js`.
-6. Repackage the extension after configuration.
+1. Customer signs in with Google or Email/Password.
+2. Email/password accounts use Firebase email verification.
+3. Customer links a license key.
+4. Customer generates a short-lived, one-time extension activation token.
+5. Extension exchanges that token for a device-bound session token.
+6. Server verifies the session token, license status, expiry and device before every paid operation.
+7. Credits are deducted atomically on the server using an operationId for idempotency.
+8. Admin controls license status, credits, device limits, packages, payments and credit costs.
+9. Payment gateway is intentionally not hard-wired yet; payment requests can be approved manually until a gateway is added.
 
-## Firestore model
-`users`, `licenses`, `devices`, `creditTransactions`, `payments`, `creditPackages`, `settings`, `auditLogs`.
+## Local setup
 
-The included API already implements license activation/verification, device limits, atomic credit consumption, duplicate operation protection, and server-side status checks. Payment and admin management endpoints should be added behind Firebase Auth/custom claims before accepting real money.
+Create `.env.local` from `.env.example`, then run:
+
+```bash
+npm install
+npm run dev
+```
+
+## Firebase Functions
+
+The `functions` folder is a separate Firebase backend. Deploy it with the Firebase CLI (global install is optional):
+
+```bash
+npx firebase-tools@latest login
+npx firebase-tools@latest use visa-licences
+cd functions
+npm install
+npm run build
+cd ..
+npx firebase-tools@latest deploy --only functions
+```
+
+Set `NEXT_PUBLIC_FUNCTIONS_BASE_URL` to the deployed API URL if it differs from the default.
+
+## Admin bootstrap
+
+The configured owner email in the backend (`ADMIN_EMAILS`, defaulting to `sajolsarker5789@gmail.com`) can sign in and use the Admin Console's **Refresh admin access** button once the Functions API is deployed. The backend sets a Firebase custom claim `admin: true`. Sign out/in afterwards so the browser receives the new claim.
+
+For production, set `ADMIN_EMAILS` as a Functions environment variable instead of relying on the default.
+
+## Security notes
+
+- Firestore client writes for licenses, credits, payments, devices, transactions and activation tokens are denied.
+- Credit deductions happen only in Cloud Functions and use Firestore transactions.
+- Activation tokens are stored only as SHA-256 hashes and expire after 15 minutes.
+- The session token is stored only as a hash on the device record.
+- Never commit `.env.local`, service-account JSON, private keys or payment secrets.
+- Before launch, add Firebase App Check, rate limiting/abuse protection, monitoring and a real payment provider.
