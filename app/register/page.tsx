@@ -1,0 +1,6 @@
+'use client';
+import {FormEvent,useState} from 'react';
+import {createUserWithEmailAndPassword,updateProfile} from 'firebase/auth';
+import {auth} from '../../lib/firebase';
+import {useRouter} from 'next/navigation';
+export default function Register(){const[name,setName]=useState('');const[email,setEmail]=useState('');const[pw,setPw]=useState('');const[error,setError]=useState('');const r=useRouter();async function submit(e:FormEvent){e.preventDefault();try{const c=await createUserWithEmailAndPassword(auth,email,pw);await updateProfile(c.user,{displayName:name});r.push('/dashboard')}catch(e:any){setError(e.message||'Registration failed')}}return <main className="wrap" style={{maxWidth:480}}><div className="card"><h1>Create account</h1><form onSubmit={submit}><label>Name</label><input className="input" value={name} onChange={e=>setName(e.target.value)} required/><label>Email</label><input className="input" value={email} onChange={e=>setEmail(e.target.value)} type="email" required/><label>Password</label><input className="input" value={pw} onChange={e=>setPw(e.target.value)} type="password" minLength={8} required/>{error&&<p className="danger">{error}</p>}<button className="btn">Create account</button></form></div></main>}
